@@ -39,13 +39,25 @@ trap_vector:
   csrrw sp, mscratch, sp
   beqz sp, .Ltrap_from_machine_mode
 
-  # Assume gp is untagged and use that assumption to allow tagctrl to be
-  # stored then set to zero
-  STORE gp, 3*REGBYTES(sp)
-  csrr gp, mtagctrl
-  csrw mtagctrl, zero
-  STORE gp, 32*REGBYTES(sp)
+  # spill a GPR
+  csrw  mtagctrl_scratch, x1
 
+  # save current mtagctrl
+  csrr  x1, mtagctrl
+
+  # temporarily zero stagctrl
+  csrw  mtagctrl, zero
+
+  # save mtagctrl to stack
+  STORE x1, 33*REGBYTES(sp)
+
+  # set mtagctrl to save registers
+  li    x1, TMASK_STORE_PROP
+  csrw  mtagctrl, x1
+
+  # restore spilled register
+  csrr  x1, mtagctrl_scratch
+    
   STORE a0, 10*REGBYTES(sp)
   STORE a1, 11*REGBYTES(sp)
 
@@ -84,6 +96,7 @@ trap_vector:
 .Lhandle_trap_in_machine_mode:
   # Preserve the registers.  Compute the address of the trap handler.
   STORE ra, 1*REGBYTES(sp)
+  STORE gp, 3*REGBYTES(sp)
   STORE tp, 4*REGBYTES(sp)
   STORE t0, 5*REGBYTES(sp)
 1:auipc t0, %pcrel_hi(trap_table)  # t0 <- %hi(trap_table)
@@ -119,11 +132,20 @@ trap_vector:
   STORE t6,31*REGBYTES(sp)
   STORE t0, 2*REGBYTES(sp)         # sp
 
+  # save utagctrl. this may not be necessary as we don't switch
+  # contexts in machine mode?
+  csrr  t0, utagctrl
+  STORE t0, 32*REGBYTES(sp)
+
 #ifndef __riscv_hard_float
   lw tp, (sp) # Move the emulated FCSR from x0's save slot into tp.
 #endif
   STORE x0, (sp) # Zero x0's save slot.
 
+  # restore mtagctrl
+  LOAD  t0, 33*REGBYTES(sp)
+  csrw  mtagctrl, t0
+        
   # Invoke the handler.
   jalr t1
 
@@ -136,8 +158,23 @@ restore_mscratch:
   csrw mscratch, sp
 
 restore_regs:
+  # save current mtagctrl
+  csrr  t0, mtagctrl
+
+  # set mtagctrl appropriately
+  li    x1, TMASK_LOAD_PROP
+  csrw  mtagctrl, x1
+
+  # write mtagctrl to the stack
+  STORE t0, 33*REGBYTES(sp)
+
+  # restore utagctrl
+  LOAD  a0, 32*REGBYTES(sp)
+  csrw  utagctrl, a0
+  
   # Restore all of the registers.
   LOAD ra, 1*REGBYTES(sp)
+  LOAD gp, 3*REGBYTES(sp)
   LOAD tp, 4*REGBYTES(sp)
   LOAD t0, 5*REGBYTES(sp)
   LOAD t1, 6*REGBYTES(sp)
@@ -167,23 +204,45 @@ restore_regs:
   LOAD t5,30*REGBYTES(sp)
   LOAD t6,31*REGBYTES(sp)
 
-  # Restore tagctrl prior to returning
-  LOAD gp, 32*REGBYTES(sp)
-  csrw mtagctrl, gp
+  # load mtagctrl back in advance, so we can restore the stack pointer
+  # spill a GPR to use
+  csrw mtagctrl_scratch, x1
+  LOAD x1, 33*REGBYTES(sp)
 
-  LOAD gp, 3*REGBYTES(sp)
+  # restore stack pointer
   LOAD sp, 2*REGBYTES(sp)
+
+  # wait to actually restore mtagctrl until here, so we still propagate
+  # tags on the load of sp
+  csrw mtagctrl, x1
+
+  # restore the GPR
+  csrr x1, mtagctrl_scratch
   mret
 
 .Ltrap_from_machine_mode:
   csrr sp, mscratch
   addi sp, sp, -INTEGER_CONTEXT_SIZE -TAG_CONTEXT_SIZE
-  # Assume gp is untagged and use that assumption to allow tagctrl to be
-  # stored then set to zero
-  STORE gp, 3*REGBYTES(sp)
-  csrr gp, mtagctrl
-  csrw mtagctrl, zero
-  STORE gp, 32*REGBYTES(sp)
+        
+  # spill a GPR
+  csrw  mtagctrl_scratch, x1
+
+  # save current mtagctrl
+  csrr  x1, mtagctrl
+
+  # temporarily zero mtagctrl
+  csrw  mtagctrl, zero
+
+  # save mtagctrl to stack
+  STORE x1, 33*REGBYTES(sp)
+
+  # set mtagctrl to save registers
+  li    x1, TMASK_STORE_PROP
+  csrw  mtagctrl, x1
+
+  # restore spilled register
+  csrr  x1, mtagctrl_scratch
+              
   STORE a0,10*REGBYTES(sp)
   STORE a1,11*REGBYTES(sp)
   li a1, TRAP_FROM_MACHINE_MODE_VECTOR
