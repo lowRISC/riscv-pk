@@ -139,10 +139,9 @@ static void wake_harts()
 
 void init_first_hart(uintptr_t hartid, uintptr_t dtb)
 {
-  // Confirm console as early as possible
-  query_uart(dtb);
-  query_htif(dtb);
-
+  extern char _bss_start[], _bss_stop[];
+  size_t bsslen = _bss_stop - _bss_start;
+  memset(_bss_start, 0, bsslen);    
   hart_init();
   hls_init(0); // this might get called again from parse_config_string
 
@@ -151,9 +150,10 @@ void init_first_hart(uintptr_t hartid, uintptr_t dtb)
 
   query_mem(dtb);
   query_harts(dtb);
+#if 0
   query_clint(dtb);
   query_plic(dtb);
-
+#endif
   wake_harts();
 
   plic_init();

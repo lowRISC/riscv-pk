@@ -96,6 +96,7 @@ SECTIONS
     *(.gnu.linkonce.b.*)
     *(COMMON)
   }
+  _bss_stop = .;
 
   _end = .;
 }

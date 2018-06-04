@@ -95,6 +95,7 @@ SECTIONS
     *(.sbss*)
     *(.gnu.linkonce.b.*)
     *(COMMON)
+  _bss_stop = .;
   }
 
   .sbi :
