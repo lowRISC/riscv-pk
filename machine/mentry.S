@@ -211,6 +211,22 @@ __trap_from_machine_mode:
   j restore_regs
 
 do_reset:
+	la x1, _bss_start
+	la x2, _bss_stop
+	sub x2, x2, x1
+	and x3, x1, 4
+	beq x3, zero, 1f
+	sw zero,(x1)
+	addi x1, x1, 4
+	addi x2, x2, -4
+1:	sd zero,(x1)
+	sd zero,8(x1)
+	sd zero,16(x1)
+	sd zero,24(x1)
+	addi x1, x1, 32
+	addi x2, x2, -32
+	bgt x2, zero, 1b
+
   li x1, 0
   li x2, 0
   li x3, 0

@@ -48,7 +48,6 @@ static void delegate_traps()
     (1U << CAUSE_BREAKPOINT) |
     (1U << CAUSE_LOAD_PAGE_FAULT) |
     (1U << CAUSE_STORE_PAGE_FAULT) |
-    (1U << CAUSE_BREAKPOINT) |
     (1U << CAUSE_USER_ECALL);
 
   write_csr(mideleg, interrupts);
@@ -137,11 +136,12 @@ static void wake_harts()
       *OTHER_HLS(hart)->ipi = 1; // wakeup the hart
 }
 
-void init_first_hart(uintptr_t hartid, uintptr_t dtb)
+void init_first_hart()
 {
-  extern char _bss_start[], _bss_stop[];
-  size_t bsslen = _bss_stop - _bss_start;
-  memset(_bss_start, 0, bsslen);    
+  uintptr_t hartid = 0;
+  uintptr_t dtb = 0x10080;
+  // Confirm console as early as possible
+  query_uart(dtb);
   hart_init();
   hls_init(0); // this might get called again from parse_config_string
 
@@ -150,10 +150,9 @@ void init_first_hart(uintptr_t hartid, uintptr_t dtb)
 
   query_mem(dtb);
   query_harts(dtb);
-#if 0
   query_clint(dtb);
   query_plic(dtb);
-#endif
+
   wake_harts();
 
   plic_init();

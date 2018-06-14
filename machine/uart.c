@@ -18,3 +18,8 @@ int uart_getchar()
   if (ch < 0) return -1;
   return ch;
 }
+
+void query_uart(uintptr_t fdt)
+{
+
+}
