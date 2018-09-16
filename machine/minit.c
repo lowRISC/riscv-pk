@@ -136,10 +136,8 @@ static void wake_harts()
       *OTHER_HLS(hart)->ipi = 1; // wakeup the hart
 }
 
-void init_first_hart()
+void init_first_hart(uintptr_t hartid, uintptr_t dtb)
 {
-  uintptr_t hartid = 0;
-  uintptr_t dtb = 0x10080;
   // Confirm console as early as possible
   query_uart(dtb);
   hart_init();

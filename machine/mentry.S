@@ -237,8 +237,8 @@ do_reset:
   li x8, 0
   li x9, 0
 // if using dtb, save a0 and a1; arguments from previous boot loader stage:
-  li x10, 0
-  li x11, 0
+  csrr x10, mhartid
+  la x11, _dtb
   li x12, 0
   li x13, 0
   li x14, 0
@@ -311,6 +311,10 @@ do_reset:
 #endif
   wfi
   j .LmultiHart
+
+_dtb:
+  /* temporarily hack in modified device tree blob */
+  .incbin "lowrisc.dtb"
 
   .bss
   .align RISCV_PGSHIFT
