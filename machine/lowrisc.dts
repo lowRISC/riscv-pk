@@ -108,7 +108,7 @@
 			compatible = "lowrisc-fake";
 		};
 		vga: lowrisc-vga@40038000 {
-                        reg = <0x40038000 0x4000>;
+                        reg = <0x40038000 0x8000>;
                         reg-io-width = <8>;
                         reg-shift = <3>;
 			compatible = "lowrisc-vga";
