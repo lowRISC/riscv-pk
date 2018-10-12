@@ -5,6 +5,12 @@
 	#size-cells = <1>;
 	compatible = "freechips,rocketchip-unknown-dev";
 	model = "freechips,rocketchip-unknown";
+
+        chosen {
+               bootargs = [00];
+               stdout-path = "/soc/lowrisc-fake@40034000";
+        };
+
 	cpus {
 		#address-cells = <1>;
 		#size-cells = <0>;

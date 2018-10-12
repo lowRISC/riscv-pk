@@ -13,8 +13,12 @@ long disabled_hart_mask;
 static uintptr_t dtb_output()
 {
   extern char _payload_end;
+  uintptr_t tmp;
   uintptr_t end = (uintptr_t) &_payload_end;
-  return (end + MEGAPAGE_SIZE - 1) / MEGAPAGE_SIZE * MEGAPAGE_SIZE;
+  tmp = (end + MEGAPAGE_SIZE - 1) / MEGAPAGE_SIZE * MEGAPAGE_SIZE;
+  tmp += 0x1000000;
+  printm("tmp %lx\n", tmp);
+  return (tmp);
 }
 
 static void filter_dtb(uintptr_t source)
@@ -63,5 +67,6 @@ void boot_loader(uintptr_t dtb)
 #endif
   mb();
   entry_point = &_payload_start;
+       printm("entry_point %lx\n", entry_point);
   boot_other_hart(0);
 }
