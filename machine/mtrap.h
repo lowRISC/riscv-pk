@@ -25,6 +25,7 @@ enum {
         keyb_base_addr = 0x40030000, // These have been relocated
         uart_base_addr = 0x40034000,
          vga_base_addr = 0x40038000,
+          fb_base_addr = 0x40040000,
          ddr_base_addr = 0x80000000
       };
 
