@@ -3,11 +3,15 @@ dummy_payload_subproject_deps = \
 dummy_payload_hdrs = \
 
 dummy_payload_c_srcs = \
+  core_main.c core_list_join.c core_matrix.c core_state.c core_util.c core_portme.c printf.c \
 
 dummy_payload_asm_srcs = \
-  dummy_entry.S \
+  crt.S
 
 dummy_payload_test_srcs =
 
 dummy_payload_install_prog_srcs = \
-  dummy_payload.c \
+
+dummy_payload: $(patsubst %.S, %.o, $(dummy_payload_asm_srcs)) $(patsubst %.c, %.o, $(dummy_payload_c_srcs))
+	$(LINK) -o $@ -T ../dummy_payload/dummy_payload.lds $(dummy_payload_asm_objs) $(dummy_payload_c_objs) $(LIBS)
+	@echo $@ is linked
