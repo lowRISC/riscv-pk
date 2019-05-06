@@ -41,3 +41,8 @@ machine_c_srcs = \
 machine_asm_srcs = \
   mentry.S \
   fp_asm.S \
+
+mentry.o : ariane.dtb
+
+ariane.dtb: ariane.dts
+	dtc -I dts ../machine/ariane.dts -O dtb -o ariane.dtb
