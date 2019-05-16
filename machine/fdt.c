@@ -139,6 +139,13 @@ int fdt_string_list_index(const struct fdt_scan_prop *prop, const char *str)
   return -1;
 }
 
+const uint32_t *fdt_get_value(const uint32_t *value, uint32_t *result)
+{
+  *result = bswap(*value++);
+  return value;
+}
+
+
 //////////////////////////////////////////// MEMORY SCAN /////////////////////////////////////////
 
 struct mem_scan {

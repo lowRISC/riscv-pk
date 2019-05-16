@@ -55,6 +55,7 @@ uint32_t fdt_size(uintptr_t fdt);
 const uint32_t *fdt_get_address(const struct fdt_scan_node *node, const uint32_t *base, uint64_t *value);
 const uint32_t *fdt_get_size(const struct fdt_scan_node *node, const uint32_t *base, uint64_t *value);
 int fdt_string_list_index(const struct fdt_scan_prop *prop, const char *str); // -1 if not found
+const uint32_t *fdt_get_value(const uint32_t *value, uint32_t *result);
 
 // Setup memory+clint+plic
 void query_mem(uintptr_t fdt);
