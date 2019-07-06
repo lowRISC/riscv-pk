@@ -81,13 +81,13 @@
 			reg = <0x10000 0x10000>;
 			reg-names = "mem";
 		};
-		mmc: lowrisc-mmc@40010000 {
+		sd: pitonsd@40010000 {
                         reg = <0x40010000 0x10000>;
                         interrupt-parent = <&L0>;
                         interrupts = <4>;
                         reg-io-width = <8>;
                         reg-shift = <3>;
-			compatible = "lowrisc-mmc";
+			compatible = "pitonsd";
 		};
 		eth: lowrisc-eth@40020000 {
                         reg = <0x40020000 0x8000>;
