@@ -44,9 +44,8 @@ void putstring(const char* s)
 
 void vprintm(const char* s, va_list vl)
 {
-  char buf[256];
-  vsnprintf(buf, sizeof buf, s, vl);
-  putstring(buf);
+  /* a temporary hack */
+  putstring(s);
 }
 
 void printm(const char* s, ...)

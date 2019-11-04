@@ -235,3 +235,14 @@ void enter_machine_mode(void (*fn)(uintptr_t, uintptr_t), uintptr_t arg0, uintpt
 
   __builtin_unreachable();
 }
+
+void __attribute__((__noreturn__)) _StackCheckHandler(void)
+{
+	/* Stack canary error is a software fatal condition; treat it as such.
+	 */
+	__builtin_unreachable();
+}
+
+__attribute__ ((section (".noinit"))) uintptr_t __stack_chk_guard;
+
+void  __stack_chk_fail() __attribute__((alias("_StackCheckHandler")));
