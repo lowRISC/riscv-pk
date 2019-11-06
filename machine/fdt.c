@@ -126,6 +126,11 @@ const uint32_t *fdt_get_size(const struct fdt_scan_node *node, const uint32_t *v
   return value;
 }
 
+uint32_t fdt_get_value(const struct fdt_scan_prop *prop, uint32_t index)
+{
+  return bswap(prop->value[index]);
+}
+
 int fdt_string_list_index(const struct fdt_scan_prop *prop, const char *str)
 {
   const char *list = (const char *)prop->value;
@@ -653,8 +658,12 @@ static bool hart_filter_mask(const struct hart_filter *filter)
 {
   if (filter->mmu_type == NULL) return true;
   if (strcmp(filter->status, "okay")) return true;
+#if __riscv_xlen == 32
+  if (!strcmp(filter->mmu_type, "riscv,sv32")) return false;
+#else
   if (!strcmp(filter->mmu_type, "riscv,sv39")) return false;
   if (!strcmp(filter->mmu_type, "riscv,sv48")) return false;
+#endif
   printm("hart_filter_mask saw unknown hart type: status=\"%s\", mmu_type=\"%s\"\n",
          filter->status, filter->mmu_type);
   return true;

@@ -32,7 +32,7 @@ m4_define( proj_abbreviation, [riscv-pk])
 # distribution knows what version it came from. If you are not using
 # version control then it is fine to set this directly.
 
-m4_define( proj_version, [?])
+m4_define( proj_version, [1.0.0])
 
 #-------------------------------------------------------------------------
 # Setup
@@ -96,6 +96,13 @@ AC_SUBST(LDFLAGS)
 AC_SUBST([LIBS], ["-lgcc"])
 AC_SUBST(WITH_ARCH)
 AC_SUBST(host_alias)
+
+AC_ARG_WITH([mem-start], AS_HELP_STRING([--with-mem-start], [Set physical memory start address]),
+  [
+   AC_SUBST([MEM_START], $with_mem_start, [Physical memory start address])
+  ], [
+   AC_SUBST([MEM_START], [0x80000000], [Physical memory start address])
+  ])
 
 #-------------------------------------------------------------------------
 # MCPPBS subproject list
