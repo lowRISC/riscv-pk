@@ -1,8 +1,11 @@
+// See LICENSE for license details.
+
 #include "emulation.h"
 #include "fp_emulation.h"
 #include "unprivileged_memory.h"
 #include "mtrap.h"
 #include "config.h"
+#include "pk.h"
 
 union byte_array {
   uint8_t bytes[8];
@@ -15,6 +18,7 @@ void misaligned_load_trap(uintptr_t* regs, uintptr_t mcause, uintptr_t mepc)
   union byte_array val;
   uintptr_t mstatus;
   insn_t insn = get_insn(mepc, &mstatus);
+  uintptr_t npc = mepc + insn_len(insn);
   uintptr_t addr = read_csr(mbadaddr);
 
   int shift = 0, fp = 0, len;
@@ -60,8 +64,11 @@ void misaligned_load_trap(uintptr_t* regs, uintptr_t mcause, uintptr_t mepc)
 #  endif
 # endif
 #endif
-  else
+  else {
+    mcause = CAUSE_LOAD_ACCESS;
+    write_csr(mcause, mcause);
     return truly_illegal_insn(regs, mcause, mepc, mstatus, insn);
+  }
 
   val.int64 = 0;
   for (intptr_t i = 0; i < len; i++)
@@ -74,7 +81,7 @@ void misaligned_load_trap(uintptr_t* regs, uintptr_t mcause, uintptr_t mepc)
   else
     SET_F32_RD(insn, regs, val.intx);
 
-  write_csr(mepc, mepc + 4);
+  write_csr(mepc, npc);
 }
 
 void misaligned_store_trap(uintptr_t* regs, uintptr_t mcause, uintptr_t mepc)
@@ -82,6 +89,7 @@ void misaligned_store_trap(uintptr_t* regs, uintptr_t mcause, uintptr_t mepc)
   union byte_array val;
   uintptr_t mstatus;
   insn_t insn = get_insn(mepc, &mstatus);
+  uintptr_t npc = mepc + insn_len(insn);
   int len;
 
   val.intx = GET_RS2(insn, regs);
@@ -123,12 +131,15 @@ void misaligned_store_trap(uintptr_t* regs, uintptr_t mcause, uintptr_t mepc)
 #  endif
 # endif
 #endif
-  else
+  else {
+    mcause = CAUSE_STORE_ACCESS;
+    write_csr(mcause, mcause);
     return truly_illegal_insn(regs, mcause, mepc, mstatus, insn);
+  }
 
   uintptr_t addr = read_csr(mbadaddr);
   for (int i = 0; i < len; i++)
     store_uint8_t((void *)(addr + i), val.bytes[i], mepc);
 
-  write_csr(mepc, mepc + 4);
+  write_csr(mepc, npc);
 }

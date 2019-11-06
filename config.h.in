@@ -1,5 +1,8 @@
 /* config.h.in.  Generated from configure.ac by autoheader.  */
 
+/* Define to run payload in machine mode */
+#undef BBL_BOOT_MACHINE
+
 /* Define if subproject MCPPBS_SPROJ_NORM is enabled */
 #undef BBL_ENABLED
 
@@ -38,6 +41,12 @@
 
 /* Define if virtual memory support is enabled */
 #undef PK_ENABLE_VM
+
+/* Define if the DTS is to be displayed */
+#undef PK_PRINT_DEVICE_TREE
+
+/* Use relaxed payload alignment */
+#undef RELAXED_ALIGNMENT
 
 /* Define if subproject MCPPBS_SPROJ_NORM is enabled */
 #undef SOFTFLOAT_ENABLED

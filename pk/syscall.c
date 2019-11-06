@@ -16,14 +16,15 @@ typedef long (*syscall_t)(long, long, long, long, long, long, long);
 void sys_exit(int code)
 {
   if (current.cycle0) {
-    size_t dt = rdtime() - current.time0;
-    size_t dc = rdcycle() - current.cycle0;
-    size_t di = rdinstret() - current.instret0;
+    uint64_t dt = rdtime64() - current.time0;
+    uint64_t dc = rdcycle64() - current.cycle0;
+    uint64_t di = rdinstret64() - current.instret0;
 
-    printk("%ld ticks\n", dt);
-    printk("%ld cycles\n", dc);
-    printk("%ld instructions\n", di);
-    printk("%d.%d%d CPI\n", dc/di, 10ULL*dc/di % 10, (100ULL*dc + di/2)/di % 10);
+    printk("%lld ticks\n", dt);
+    printk("%lld cycles\n", dc);
+    printk("%lld instructions\n", di);
+    printk("%d.%d%d CPI\n", (int)(dc/di), (int)(10ULL*dc/di % 10),
+        (int)((100ULL*dc + di/2)/di % 10));
   }
   shutdown(code);
 }
@@ -180,6 +181,21 @@ int sys_dup(int fd)
   return r;
 }
 
+int sys_dup3(int fd, int newfd, int flags)
+{
+  kassert(flags == 0);
+  int r = -EBADF;
+  file_t* f = file_get(fd);
+
+  if (f)
+  {
+    r = file_dup3(f, newfd);
+    file_decref(f);
+  }
+
+  return r;
+}
+
 ssize_t sys_lseek(int fd, size_t ptr, int dir)
 {
   ssize_t r = -EBADF;
@@ -301,7 +317,7 @@ int sys_uname(void* buf)
   const int sz = 65;
   strcpy(buf + 0*sz, "Proxy Kernel");
   strcpy(buf + 1*sz, "");
-  strcpy(buf + 2*sz, "3.4.5");
+  strcpy(buf + 2*sz, "4.15.0");
   strcpy(buf + 3*sz, "");
   strcpy(buf + 4*sz, "");
   strcpy(buf + 5*sz, "");
@@ -353,7 +369,7 @@ int sys_rt_sigaction(int sig, const void* act, void* oact, size_t sssz)
 
 long sys_time(long* loc)
 {
-  uintptr_t t = rdcycle() / CLOCK_FREQ;
+  uint64_t t = rdcycle64() / CLOCK_FREQ;
   if (loc)
     *loc = t;
   return t;
@@ -361,7 +377,7 @@ long sys_time(long* loc)
 
 int sys_times(long* loc)
 {
-  uintptr_t t = rdcycle();
+  uint64_t t = rdcycle64();
   kassert(CLOCK_FREQ % 1000000 == 0);
   loc[0] = t / (CLOCK_FREQ / 1000000);
   loc[1] = 0;
@@ -373,10 +389,19 @@ int sys_times(long* loc)
 
 int sys_gettimeofday(long* loc)
 {
-  uintptr_t t = rdcycle();
+  uint64_t t = rdcycle64();
   loc[0] = t / CLOCK_FREQ;
   loc[1] = (t % CLOCK_FREQ) / (CLOCK_FREQ / 1000000);
   
+  return 0;
+}
+
+long sys_clock_gettime(int clk_id, long *loc)
+{
+  uint64_t t = rdcycle64();
+  loc[0] = t / CLOCK_FREQ;
+  loc[1] = (t % CLOCK_FREQ) / (CLOCK_FREQ / 1000000000);
+
   return 0;
 }
 
@@ -442,6 +467,7 @@ long do_syscall(long a0, long a1, long a2, long a3, long a4, long a5, unsigned l
     [SYS_munmap] = sys_munmap,
     [SYS_mremap] = sys_mremap,
     [SYS_mprotect] = sys_mprotect,
+    [SYS_prlimit64] = sys_stub_nosys,
     [SYS_rt_sigaction] = sys_rt_sigaction,
     [SYS_gettimeofday] = sys_gettimeofday,
     [SYS_times] = sys_times,
@@ -451,16 +477,18 @@ long do_syscall(long a0, long a1, long a2, long a3, long a4, long a5, unsigned l
     [SYS_ftruncate] = sys_ftruncate,
     [SYS_getdents] = sys_getdents,
     [SYS_dup] = sys_dup,
+    [SYS_dup3] = sys_dup3,
     [SYS_readlinkat] = sys_stub_nosys,
     [SYS_rt_sigprocmask] = sys_stub_success,
     [SYS_ioctl] = sys_stub_nosys,
-    [SYS_clock_gettime] = sys_stub_nosys,
+    [SYS_clock_gettime] = sys_clock_gettime,
     [SYS_getrusage] = sys_stub_nosys,
     [SYS_getrlimit] = sys_stub_nosys,
     [SYS_setrlimit] = sys_stub_nosys,
     [SYS_chdir] = sys_chdir,
     [SYS_set_tid_address] = sys_stub_nosys,
     [SYS_set_robust_list] = sys_stub_nosys,
+    [SYS_madvise] = sys_stub_nosys,
   };
 
   const static void* old_syscall_table[] = {

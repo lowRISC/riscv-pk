@@ -1,3 +1,5 @@
+// See LICENSE for license details.
+
 #ifndef _RISCV_MTRAP_H
 #define _RISCV_MTRAP_H
 
@@ -9,15 +11,11 @@
 # define MAX_HARTS 1
 #endif
 
-// These harts will be prevented from booting beyond bbl
-#ifndef DISABLED_HART_MASK
-#define DISABLED_HART_MASK	0x0UL
-#endif
-
 #ifndef __ASSEMBLER__
 
 #include <stdint.h>
 #include <stddef.h>
+#include <stdarg.h>
 
 #define read_const_csr(reg) ({ unsigned long __tmp; \
   asm ("csrr %0, " #reg : "=r"(__tmp)); \
@@ -60,13 +58,17 @@ typedef struct {
 
 hls_t* hls_init(uintptr_t hart_id);
 void parse_config_string();
-void poweroff(void) __attribute((noreturn));
+void poweroff(uint16_t code) __attribute((noreturn));
 void printm(const char* s, ...);
+void vprintm(const char *s, va_list args);
 void putstring(const char* s);
 #define assert(x) ({ if (!(x)) die("assertion failed: %s", #x); })
-#define die(str, ...) ({ printm("%s:%d: " str "\n", __FILE__, __LINE__, ##__VA_ARGS__); poweroff(); })
+#define die(str, ...) ({ printm("%s:%d: " str "\n", __FILE__, __LINE__, ##__VA_ARGS__); poweroff(-1); })
 
+void setup_pmp();
 void enter_supervisor_mode(void (*fn)(uintptr_t), uintptr_t arg0, uintptr_t arg1)
+  __attribute__((noreturn));
+void enter_machine_mode(void (*fn)(uintptr_t, uintptr_t), uintptr_t arg0, uintptr_t arg1)
   __attribute__((noreturn));
 void boot_loader(uintptr_t dtb);
 void boot_other_hart(uintptr_t dtb);
@@ -81,6 +83,7 @@ static inline void wfi()
 #define IPI_SOFT       0x1
 #define IPI_FENCE_I    0x2
 #define IPI_SFENCE_VMA 0x4
+#define IPI_HALT       0x8
 
 #define MACHINE_STACK_SIZE RISCV_PGSIZE
 #define MENTRY_HLS_OFFSET (INTEGER_CONTEXT_SIZE + SOFT_FLOAT_CONTEXT_SIZE)

@@ -1,3 +1,5 @@
+// See LICENSE for license details.
+
 #include "mtrap.h"
 #include "mcall.h"
 #include "htif.h"
@@ -5,8 +7,11 @@
 #include "bits.h"
 #include "vm.h"
 #include "uart.h"
+#include "uart16550.h"
+#include "finisher.h"
 #include "fdt.h"
 #include "unprivileged_memory.h"
+#include "disabled_hart_mask.h"
 #include <errno.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -20,15 +25,12 @@ static uintptr_t mcall_console_putchar(uint8_t ch)
 {
   if (uart) {
     uart_putchar(ch);
-  } else {
+  } else if (uart16550) {
+    uart16550_putchar(ch);
+  } else if (htif) {
     htif_console_putchar(ch);
   }
   return 0;
-}
-
-void poweroff()
-{
-  htif_poweroff();
 }
 
 void putstring(const char* s)
@@ -37,21 +39,25 @@ void putstring(const char* s)
     mcall_console_putchar(*s++);
 }
 
-void printm(const char* s, ...)
+void vprintm(const char* s, va_list vl)
 {
   char buf[256];
+  vsnprintf(buf, sizeof buf, s, vl);
+  putstring(buf);
+}
+
+void printm(const char* s, ...)
+{
   va_list vl;
 
   va_start(vl, s);
-  vsnprintf(buf, sizeof buf, s, vl);
+  vprintm(s, vl);
   va_end(vl);
-
-  putstring(buf);
 }
 
 static void send_ipi(uintptr_t recipient, int event)
 {
-  if (((DISABLED_HART_MASK >> recipient) & 1)) return;
+  if (((disabled_hart_mask >> recipient) & 1)) return;
   atomic_or(&OTHER_HLS(recipient)->mipi_pending, event);
   mb();
   *OTHER_HLS(recipient)->ipi = 1;
@@ -61,8 +67,12 @@ static uintptr_t mcall_console_getchar()
 {
   if (uart) {
     return uart_getchar();
-  } else {
+  } else if (uart16550) {
+    return uart16550_getchar();
+  } else if (htif) {
     return htif_console_getchar();
+  } else {
+    return '\0';
   }
 }
 
@@ -73,7 +83,7 @@ static uintptr_t mcall_clear_ipi()
 
 static uintptr_t mcall_shutdown()
 {
-  poweroff();
+  poweroff(0);
 }
 
 static uintptr_t mcall_set_timer(uint64_t when)
@@ -184,14 +194,30 @@ void pmp_trap(uintptr_t* regs, uintptr_t mcause, uintptr_t mepc)
   redirect_trap(mepc, read_csr(mstatus), read_csr(mbadaddr));
 }
 
-static void machine_page_fault(uintptr_t* regs, uintptr_t dummy, uintptr_t mepc)
+static void machine_page_fault(uintptr_t* regs, uintptr_t mcause, uintptr_t mepc)
 {
   // MPRV=1 iff this trap occurred while emulating an instruction on behalf
   // of a lower privilege level. In that case, a2=epc and a3=mstatus.
+  // a1 holds MPRV if emulating a load or store, or MPRV | MXR if loading
+  // an instruction from memory.  In the latter case, we should report an
+  // instruction fault instead of a load fault.
   if (read_csr(mstatus) & MSTATUS_MPRV) {
+    if (regs[11] == (MSTATUS_MPRV | MSTATUS_MXR)) {
+      if (mcause == CAUSE_LOAD_PAGE_FAULT)
+        write_csr(mcause, CAUSE_FETCH_PAGE_FAULT);
+      else if (mcause == CAUSE_LOAD_ACCESS)
+        write_csr(mcause, CAUSE_FETCH_ACCESS);
+      else
+        goto fail;
+    } else if (regs[11] != MSTATUS_MPRV) {
+      goto fail;
+    }
+
     return redirect_trap(regs[12], regs[13], read_csr(mbadaddr));
   }
-  bad_trap(regs, dummy, mepc);
+
+fail:
+  bad_trap(regs, mcause, mepc);
 }
 
 void trap_from_machine_mode(uintptr_t* regs, uintptr_t dummy, uintptr_t mepc)
@@ -205,8 +231,20 @@ void trap_from_machine_mode(uintptr_t* regs, uintptr_t dummy, uintptr_t mepc)
     case CAUSE_FETCH_ACCESS:
     case CAUSE_LOAD_ACCESS:
     case CAUSE_STORE_ACCESS:
-      return machine_page_fault(regs, dummy, mepc);
+      return machine_page_fault(regs, mcause, mepc);
     default:
       bad_trap(regs, dummy, mepc);
+  }
+}
+
+void poweroff(uint16_t code)
+{
+  printm("Power off\r\n");
+  finisher_exit(code);
+  if (htif) {
+    htif_poweroff();
+  } else {
+    send_ipi_many(0, IPI_HALT);
+    while (1) { asm volatile ("wfi\n"); }
   }
 }
